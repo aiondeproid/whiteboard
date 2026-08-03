@@ -46,6 +46,29 @@
 - URLの `dept` パラメータを部一覧と照合し、存在しなければ404（`notFound()`）。
 - `getMemberBoard()` でボードメンバーか確認、未参加なら `/display` にリダイレクト。
 - `getVisibleDocuments()` で表示可能な資料のみ取得し、`getDocumentPreviewUrl()` で署名付きプレビューURLを並行取得。
-- 一覧表示のみ（追加・削除・表示切替のフォームは無し）。資料名がそのままリンクになっており、クリックでブラウザ内蔵PDFビューアが開く新しいタブが開く（要件の画面フロー4・5相当。ページ送り操作等のカスタムPDFビューアはまだ無し — ブラウザ標準ビューアに委ねている）。
+- 一覧表示のみ（追加・削除・表示切替のフォームは無し）。資料名は `/display/{dept}/{docId}` へのリンク（画面フロー4相当）。署名付きURLはここでは発行しない — ビューア側のページで必要になった時に取得する。
 
 **既知の挙動（編集アプリと共通）**: 部のスラッグチェックが認証チェックより先に走るため、未ログイン状態で `/display/{dept}` に直接アクセスすると（`departments` テーブルのRLSが `authenticated` ロール必須のため）ログイン画面へのリダイレクトではなく404になる。`/edit/{dept}` も同じ順序で同じ挙動なので、今回新しく入れた問題ではない。UX的に気になるなら両アプリまとめて認証チェックを先に持ってくる改修が必要（未着手）。
+
+## PDF ビューア（画面フロー5）
+
+`react-pdf`（10.4.1）+ 同梱と合わせた `pdfjs-dist`（5.4.296、バージョンを完全一致させて `package.json` に直接固定）を追加。react-pdf は内部で `pdfjs-dist` に依存しているが、バージョンが厳密一致していないと実行時に警告/不整合が出るため、直接依存としても同じバージョンを固定している。
+
+### src/lib/supabase/dal.ts — getDocumentPreviewUrl に expiresInSeconds 追加、getVisibleDocument 追加
+
+- `getDocumentPreviewUrl(storagePath, expiresInSeconds = 300)`: 第2引数化。編集アプリのプレビューは即クリックされる想定で従来通り5分のままだが、表示アプリのビューアはキオスクで長時間開きっぱなしになり得る（pdf.jsはスクロール時にページ範囲を都度fetchし直す）ため、ビューアのルートからは3600秒を渡す。
+- `getVisibleDocument(boardId, departmentId, documentId)`: ボード・部・`visible=true` に絞った単一資料取得。URLの `docId` を推測されても、非表示資料や他ボードの資料は取得できない。
+
+### src/app/display/[dept]/[docId]/page.tsx
+
+サーバーコンポーネント。部・ボードメンバーシップ・資料の存在確認（`getVisibleDocument`）をした上で、署名付きURLを発行し `PdfViewerLoader` に渡す。戻るリンクとタイトル見出しのみ。
+
+### src/app/display/[dept]/[docId]/pdf-viewer-loader.tsx
+
+`"use client"` の薄いラッパー。App Router では `next/dynamic` の `ssr: false` はサーバーコンポーネントの中では使えない制約があるため、ここでクライアントコンポーネント境界を作って `dynamic(() => import("./pdf-viewer"), { ssr: false })` している。
+
+### src/app/display/[dept]/[docId]/pdf-viewer.tsx
+
+実際の `react-pdf` の `<Document>`/`<Page>`。`pdfjs.GlobalWorkerOptions.workerSrc` を `new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url)` で設定（Turbopackがこのパターンをアセットとして解決してくれる。追加の `next.config.ts` 設定は不要だった）。前へ/次へボタンとページ番号表示、縮小/拡大ボタン（`MIN_SCALE`〜`MAX_SCALE` の範囲）を実装。`renderTextLayer` / `renderAnnotationLayer` は両方 `false`（テキスト選択・注釈は要件外なので、CSSインポートや余計な処理を増やさない判断）。全画面表示は要件のスコープ外なので実装していない。
+
+**未確認事項**: `npm run build` は通り、pdf.jsワーカーの解決も本番ビルドで確認済みだが、実際にログイン→参加コード入力→PDFクリックまでの一連の操作をブラウザで通しで確認できていない（テスト用のSupabaseアカウント・実PDFが手元にない）。ユーザー側でブラウザ確認が必要。

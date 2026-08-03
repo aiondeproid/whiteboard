@@ -69,12 +69,13 @@ export async function getDepartmentBySlug(
 }
 
 export async function getDocumentPreviewUrl(
-  storagePath: string
+  storagePath: string,
+  expiresInSeconds = 300
 ): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.storage
     .from("documents")
-    .createSignedUrl(storagePath, 300);
+    .createSignedUrl(storagePath, expiresInSeconds);
 
   if (error) return null;
   return data.signedUrl;
@@ -96,6 +97,30 @@ export async function getDocuments(
 
   if (error) throw error;
   return data ?? [];
+}
+
+// Display app: single document lookup for the PDF viewer route, scoped to
+// board+department+visible so a viewer can't reach a hidden or foreign document
+// by guessing an id in the URL.
+export async function getVisibleDocument(
+  boardId: string,
+  departmentId: string,
+  documentId: string
+): Promise<Document | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("documents")
+    .select(
+      "id, board_id, department_id, title, storage_path, visible, created_at, updated_at"
+    )
+    .eq("board_id", boardId)
+    .eq("department_id", departmentId)
+    .eq("id", documentId)
+    .eq("visible", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
 }
 
 // Display app: filters to visible=true explicitly rather than relying on the
