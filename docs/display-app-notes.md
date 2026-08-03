@@ -33,4 +33,19 @@
 
 - `requireUser("/display/login")` でログイン確認。
 - `getMemberBoard()` でボードが無ければ「ボードに参加」の説明文 + `JoinBoardForm` を表示（要件の画面フロー 2「参加コード入力」に相当）。
-- ボードがあれば参加済みの確認表示のみ（画面フロー 3「資料ホーム: 4部から選択」以降は次のステップで実装予定。まだ `/display/[dept]` は存在しない）。
+- ボードがあれば `getDepartments()` で固定4部を取得し、`/edit/page.tsx` と同じグリッドUIで部ごとのリンクを表示（画面フロー 3「資料ホーム: 4部から選択」）。リンク先は `/display/{slug}`。
+
+## src/lib/supabase/dal.ts — getVisibleDocuments 追加
+
+編集アプリの `getDocuments()` はボードの全資料を返す（editor向けRLSポリシーが全件許可しているので、editorアカウントなら非表示分も含めて返る）。表示アプリは常に `visible = true` だけを見せたいので、クエリ側で明示的に `.eq("visible", true)` する `getVisibleDocuments()` を追加。RLS（viewerロールなら非表示行はそもそも見えない）だけに頼らず、アプリ層でも二重にフィルタする形。
+
+## src/app/display/[dept]/page.tsx
+
+`/display/{dept}` の本体（サーバーコンポーネント）。`/edit/[dept]/page.tsx` の閲覧専用版。
+
+- URLの `dept` パラメータを部一覧と照合し、存在しなければ404（`notFound()`）。
+- `getMemberBoard()` でボードメンバーか確認、未参加なら `/display` にリダイレクト。
+- `getVisibleDocuments()` で表示可能な資料のみ取得し、`getDocumentPreviewUrl()` で署名付きプレビューURLを並行取得。
+- 一覧表示のみ（追加・削除・表示切替のフォームは無し）。資料名がそのままリンクになっており、クリックでブラウザ内蔵PDFビューアが開く新しいタブが開く（要件の画面フロー4・5相当。ページ送り操作等のカスタムPDFビューアはまだ無し — ブラウザ標準ビューアに委ねている）。
+
+**既知の挙動（編集アプリと共通）**: 部のスラッグチェックが認証チェックより先に走るため、未ログイン状態で `/display/{dept}` に直接アクセスすると（`departments` テーブルのRLSが `authenticated` ロール必須のため）ログイン画面へのリダイレクトではなく404になる。`/edit/{dept}` も同じ順序で同じ挙動なので、今回新しく入れた問題ではない。UX的に気になるなら両アプリまとめて認証チェックを先に持ってくる改修が必要（未着手）。

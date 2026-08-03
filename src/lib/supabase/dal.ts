@@ -97,3 +97,24 @@ export async function getDocuments(
   if (error) throw error;
   return data ?? [];
 }
+
+// Display app: filters to visible=true explicitly rather than relying on the
+// viewer-role RLS policy, so it's correct even if browsed by an editor account.
+export async function getVisibleDocuments(
+  boardId: string,
+  departmentId: string
+): Promise<Document[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("documents")
+    .select(
+      "id, board_id, department_id, title, storage_path, visible, created_at, updated_at"
+    )
+    .eq("board_id", boardId)
+    .eq("department_id", departmentId)
+    .eq("visible", true)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}

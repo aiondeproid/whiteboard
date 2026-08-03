@@ -1,4 +1,5 @@
-import { requireUser, getMemberBoard } from "@/lib/supabase/dal";
+import Link from "next/link";
+import { requireUser, getMemberBoard, getDepartments } from "@/lib/supabase/dal";
 import { JoinBoardForm } from "./join-board-form";
 
 export default async function DisplayHome() {
@@ -19,14 +20,24 @@ export default async function DisplayHome() {
     );
   }
 
+  const departments = await getDepartments();
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-50 p-4 font-sans dark:bg-black">
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 bg-zinc-50 p-4 font-sans dark:bg-black">
       <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-        {board.name} に参加済み
+        資料ホーム
       </h1>
-      <p className="max-w-sm text-center text-sm text-black/60 dark:text-zinc-400">
-        資料ホーム（部の選択）は次のステップで実装予定です。
-      </p>
+      <div className="grid grid-cols-2 gap-4">
+        {departments.map((dept) => (
+          <Link
+            key={dept.id}
+            href={`/display/${dept.slug}`}
+            className="flex items-center justify-center rounded-2xl border border-black/[.08] bg-white px-8 py-6 text-lg font-medium text-black transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-[#1a1a1a]"
+          >
+            {dept.name}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
