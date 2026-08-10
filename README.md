@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 電子掲示板（編集アプリ）
 
-## Getting Started
+工場向けデジタル掲示板の編集アプリ。部（総務課・品質管理・製造・試作）ごとに PDF 資料を追加・削除・公開/非公開切り替えできる。ボードを作成すると参加コードが発行され、表示アプリ側でそのコードを入力するとボードに viewer として参加し、公開中の資料を閲覧できる。
 
-First, run the development server:
+表示アプリは別リポジトリで開発・デプロイしているが、Supabase プロジェクトはこのアプリと共有している。要件の詳細は [`電子掲示板_MVP要件.md`](./電子掲示板_MVP要件.md) を参照。
+
+## セットアップ
+
+```bash
+npm install
+```
+
+`.env.local` に Supabase の接続情報を設定する:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+## 開発サーバー
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+[http://localhost:3000](http://localhost:3000) を開くとルート (`/`) は `/edit` にリダイレクトされる。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 実装メモ
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+ファイルごとの実装ログは [`docs/edit-app-notes.md`](./docs/edit-app-notes.md) を参照。
 
-## Learn More
+## Next.js について
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+このリポジトリの Next.js は学習データにある一般的な Next.js と互換性のない破壊的変更を含むバージョンを使用している。フレームワーク周りのコードを書く前に `node_modules/next/dist/docs/` を確認すること（詳細は [`AGENTS.md`](./AGENTS.md)）。
