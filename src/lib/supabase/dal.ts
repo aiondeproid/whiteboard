@@ -35,21 +35,6 @@ export const getEditorBoard = cache(async (): Promise<Board | null> => {
   return Array.isArray(boards) ? (boards[0] ?? null) : (boards ?? null);
 });
 
-// Display app: any board membership (editor or viewer), not just editor.
-export const getMemberBoard = cache(async (): Promise<Board | null> => {
-  await requireUser("/display/login");
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("board_members")
-    .select("boards(id, name, join_code, owner_id)")
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-  const boards = (data as { boards: Board | Board[] | null } | null)?.boards;
-  return Array.isArray(boards) ? (boards[0] ?? null) : (boards ?? null);
-});
-
 export const getDepartments = cache(async (): Promise<Department[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -93,51 +78,6 @@ export async function getDocuments(
     )
     .eq("board_id", boardId)
     .eq("department_id", departmentId)
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-// Display app: single document lookup for the PDF viewer route, scoped to
-// board+department+visible so a viewer can't reach a hidden or foreign document
-// by guessing an id in the URL.
-export async function getVisibleDocument(
-  boardId: string,
-  departmentId: string,
-  documentId: string
-): Promise<Document | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("documents")
-    .select(
-      "id, board_id, department_id, title, storage_path, visible, created_at, updated_at"
-    )
-    .eq("board_id", boardId)
-    .eq("department_id", departmentId)
-    .eq("id", documentId)
-    .eq("visible", true)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data ?? null;
-}
-
-// Display app: filters to visible=true explicitly rather than relying on the
-// viewer-role RLS policy, so it's correct even if browsed by an editor account.
-export async function getVisibleDocuments(
-  boardId: string,
-  departmentId: string
-): Promise<Document[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("documents")
-    .select(
-      "id, board_id, department_id, title, storage_path, visible, created_at, updated_at"
-    )
-    .eq("board_id", boardId)
-    .eq("department_id", departmentId)
-    .eq("visible", true)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
