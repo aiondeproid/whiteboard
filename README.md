@@ -7,7 +7,9 @@
 ## デモ
 
 - URL: [https://whiteboard-sigma-six.vercel.app](https://whiteboard-sigma-six.vercel.app)
-- デモアカウント: 準備中（TBD）
+- デモアカウント:
+  - メールアドレス: `aiondeproid+test1@gmail.com`
+  - パスワード: `aiondeproidtest`
 
 ## 要件定義
 
