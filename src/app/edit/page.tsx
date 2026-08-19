@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser, getEditorBoard, getDepartments } from "@/lib/supabase/dal";
-import { CreateBoardForm } from "./create-board-form";
+import { JoinAsEditorForm } from "./join-as-editor-form";
 
 export default async function EditHome() {
   await requireUser();
@@ -10,12 +10,12 @@ export default async function EditHome() {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-6 bg-zinc-50 p-4 font-sans dark:bg-black">
         <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          ボードを作成
+          編集者として参加
         </h1>
         <p className="max-w-sm text-center text-sm text-black/60 dark:text-zinc-400">
-          ボードを作成すると参加コードが発行されます。表示アプリ側でそのコードを入力すると、資料を共有できます。
+          社内の共有ボードに編集者として参加するには、招待コードを入力してください。
         </p>
-        <CreateBoardForm />
+        <JoinAsEditorForm />
       </div>
     );
   }

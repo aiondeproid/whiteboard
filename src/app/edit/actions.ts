@@ -5,24 +5,26 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/supabase/dal";
 
-export type CreateBoardState = { error?: string } | undefined;
+export type JoinBoardAsEditorState = { error?: string } | undefined;
 
-export async function createBoard(
-  _prevState: CreateBoardState,
+export async function joinBoardAsEditor(
+  _prevState: JoinBoardAsEditorState,
   formData: FormData
-): Promise<CreateBoardState> {
+): Promise<JoinBoardAsEditorState> {
   await requireUser();
 
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) {
-    return { error: "ボード名を入力してください。" };
+  const code = String(formData.get("code") ?? "").trim();
+  if (!code) {
+    return { error: "招待コードを入力してください。" };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_board", { p_name: name });
+  const { error } = await supabase.rpc("join_board_as_editor", {
+    p_code: code,
+  });
 
   if (error) {
-    return { error: "ボードの作成に失敗しました。" };
+    return { error: "招待コードが正しくありません。" };
   }
 
   revalidatePath("/edit");

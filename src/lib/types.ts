@@ -9,7 +9,7 @@ export type Board = {
   id: string;
   name: string;
   join_code: string;
-  owner_id: string;
+  editor_invite_code: string;
 };
 
 export type Document = {

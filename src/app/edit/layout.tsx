@@ -22,8 +22,10 @@ export default async function EditLayout({
         <div className="flex items-center gap-4 text-sm text-black/70 dark:text-zinc-400">
           {board && (
             <span>
-              {board.name} ・ 参加コード:{" "}
+              {board.name} ・ 表示用参加コード:{" "}
               <span className="font-mono">{board.join_code}</span>
+              {" "}・ 編集者招待コード:{" "}
+              <span className="font-mono">{board.editor_invite_code}</span>
             </span>
           )}
           {user && (

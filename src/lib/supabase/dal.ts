@@ -19,13 +19,13 @@ export const requireUser = cache(async (redirectTo = "/edit/login") => {
   return user;
 });
 
-// MVP assumption: a user edits at most one board.
+// 社内共有の単一ボード。複数の editor が同じボードを編集する。
 export const getEditorBoard = cache(async (): Promise<Board | null> => {
   await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("board_members")
-    .select("boards(id, name, join_code, owner_id)")
+    .select("boards(id, name, join_code, editor_invite_code)")
     .eq("role", "editor")
     .limit(1)
     .maybeSingle();
