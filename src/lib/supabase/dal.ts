@@ -19,20 +19,14 @@ export const requireUser = cache(async (redirectTo = "/edit/login") => {
   return user;
 });
 
-// 社内共有の単一ボード。複数の editor が同じボードを編集する。
-export const getEditorBoard = cache(async (): Promise<Board | null> => {
+// 社内共有の単一ボード。認証済みユーザーは全員自動的に editor として参加する。
+export const getEditorBoard = cache(async (): Promise<Board> => {
   await requireUser();
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("board_members")
-    .select("boards(id, name, join_code, editor_invite_code)")
-    .eq("role", "editor")
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("join_board_as_editor");
 
   if (error) throw error;
-  const boards = (data as { boards: Board | Board[] | null } | null)?.boards;
-  return Array.isArray(boards) ? (boards[0] ?? null) : (boards ?? null);
+  return data as Board;
 });
 
 export const getDepartments = cache(async (): Promise<Department[]> => {

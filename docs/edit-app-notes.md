@@ -12,7 +12,7 @@
 
 - `getUser()`: 現在のログインユーザーを返す（未ログインなら `null`）。`react` の `cache()` で1リクエスト内はメモ化。
 - `requireUser()`: `getUser()` して未ログインなら `/edit/login` にリダイレクト。
-- `getEditorBoard()`: ログイン確認した上で、自分が `editor` になっているボードを1件返す（社内共有の単一ボードを複数 editor で編集する前提。ユーザーごとに別ボードは持たない）。
+- `getEditorBoard()`: ログイン確認した上で、SQL関数 `join_board_as_editor` を `rpc()` 経由で呼び、唯一の共有ボードに `editor` として参加させてからそのボードを返す（招待コード不要。認証済みなら誰でも何回呼んでも同じボードに editor として紐づく。ユーザーごとに別ボードは持たない）。
 - `getDepartments()`: 部（総務課・品質管理・製造・試作の固定4件）を取得。
 - `getDepartmentBySlug(slug)`: スラッグから部を検索。
 - `getDocuments(boardId, departmentId)`: 指定ボード・部の資料一覧を取得。
@@ -32,24 +32,19 @@
 
 ## src/app/edit/actions.ts
 
-- `joinBoardAsEditor(prevState, formData)`: フォームの編集者招待コードを受け取り、DB側のSQL関数 `join_board_as_editor` を `rpc()` 経由で呼ぶだけ。唯一の共有ボードに `editor` として参加する（招待コードが正しければ何度呼んでも同じボードに紐づく）。成功したら `revalidatePath("/edit")` で再描画（リダイレクトはしない）。
 - `signOut()`: セッションを切って `/edit/login` にリダイレクト。
 
 ## src/app/edit/layout.tsx
 
-`/edit` 配下（ログインページ含む）を包むヘッダー。`getUser()` でログイン有無だけ確認し（`requireUser()` は使わない。ログインページ自体もこのlayout配下に来るのでリダイレクトループを避けるため）、ログイン中なら `getEditorBoard()` でボード名・表示用参加コード（viewer向け）・編集者招待コード（editor向け）を表示。ログイン中は「ログアウト」ボタンを表示。
-
-## src/app/edit/join-as-editor-form.tsx
-
-`joinBoardAsEditor` サーバーアクションを `useActionState` で呼ぶだけの、編集者招待コード入力フォーム（クライアントコンポーネント）。エラー表示と送信中の disabled 制御のみ。
+`/edit` 配下（ログインページ含む）を包むヘッダー。`getUser()` でログイン有無だけ確認し（`requireUser()` は使わない。ログインページ自体もこのlayout配下に来るのでリダイレクトループを避けるため）、ログイン中なら `getEditorBoard()` でボード名・参加コード（viewer向け）を表示。ログイン中は「ログアウト」ボタンを表示。
 
 ## src/app/edit/page.tsx
 
 `/edit` のホーム画面（既存のスタブ `EditHome` を置き換え）。
 
 - `requireUser()` でログイン確認（未ログインなら `/edit/login` へリダイレクト）。
-- `getEditorBoard()` で自分がまだ editor になっていなければ「編集者として参加」の説明文 + `JoinAsEditorForm`（編集者招待コード入力）を表示。単一の共有ボードなので、ボードを新規作成する導線はない。
-- editor になっていれば `getDepartments()` で固定4部を取得し、部ごとのリンクをグリッド表示（画面フロー 3「資料ホーム: 4部から選択」）。リンク先は `/edit/{slug}`。
+- `getEditorBoard()` を呼んで自分を editor として唯一の共有ボードに参加させる（招待コード不要、フォームなし）。
+- `getDepartments()` で固定4部を取得し、部ごとのリンクをグリッド表示（画面フロー 3「資料ホーム: 4部から選択」）。リンク先は `/edit/{slug}`。
 
 ## src/lib/supabase/dal.ts — getDocumentPreviewUrl 追加
 
@@ -88,3 +83,11 @@
 - `boards.editor_invite_code` を追加。viewer 用の `join_code`（表示アプリがそのまま使い続ける、変更なし）とは別コードにして、表示用コードだけでは編集権限を取れないようにした。
 - `create_board(name)` RPC を廃止し、`join_board_as_editor(code)` RPC に置き換え。ボード新規作成という概念自体をなくし、既存の唯一のボードに editor として参加するだけにした。
 - 本番の Supabase にはデモ・テストデータしか無かったため、マイグレーション内で `boards`/`board_members`/`documents`（と対応する `storage.objects` 行）を一度クリアしてから単一ボードを作り直した。
+
+## 編集者招待コード廃止（2026-08-19）
+
+編集者招待コードは不要と判断し撤廃（`supabase/migrations/0003_remove_editor_invite_code.sql`）。サインアップ自体を編集者の入口とみなし、認証済みユーザーは全員自動でボードの editor になる。
+
+- `boards.editor_invite_code` 列を削除。
+- `join_board_as_editor(code)` RPC を引数無しの `join_board_as_editor()` に置き換え。唯一のボードを探して呼び出しユーザーを editor として `board_members` に upsert するだけ（招待コードの照合が無くなった）。
+- `getEditorBoard()` がこの RPC を直接呼ぶようになったため、`/edit` 側の「未参加なら招待コード入力フォームを出す」という分岐と `JoinAsEditorForm` コンポーネント・`joinBoardAsEditor` サーバーアクションを削除。
