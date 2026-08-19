@@ -24,9 +24,14 @@ alter table boards add column if not exists editor_invite_code text unique;
 
 -- ---------------------------------------------------------------------------
 -- 3. 既存データ（デモ・テストのみ）をクリアして単一ボードを作成
+--
+-- storage.objects は SQL から直接 DELETE できない（Storage API 経由のみ許可）
+-- ため、デモPDFの実ファイルはここではクリアしない。board_members ごと消える
+-- ので旧ボードの storage RLS 経由でのアクセスはできなくなり、実害のない
+-- 孤立ファイルとして残るだけ（気になる場合は後で Storage ダッシュボードから
+-- 個別に削除する）。
 -- ---------------------------------------------------------------------------
 
-delete from storage.objects where bucket_id = 'documents';
 delete from documents;
 delete from board_members;
 delete from boards;
