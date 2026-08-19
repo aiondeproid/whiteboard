@@ -12,7 +12,6 @@ export async function addDocument(
   formData: FormData
 ): Promise<AddDocumentState> {
   const board = await getEditorBoard();
-  if (!board) return { error: "ボードが見つかりません。" };
 
   const department = await getDepartmentBySlug(deptSlug);
   if (!department) return { error: "部が見つかりません。" };

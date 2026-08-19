@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   getEditorBoard,
   getDepartmentBySlug,
@@ -19,7 +19,6 @@ export default async function DepartmentPage({
   if (!department) notFound();
 
   const board = await getEditorBoard();
-  if (!board) redirect("/edit");
 
   const documents = await getDocuments(board.id, department.id);
   const documentsWithPreview = await Promise.all(
