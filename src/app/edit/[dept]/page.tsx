@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   getEditorBoard,
   getDepartmentBySlug,
@@ -7,6 +8,7 @@ import {
 } from "@/lib/supabase/dal";
 import { toggleVisible, deleteDocument } from "./actions";
 import { AddDocumentForm } from "./add-document-form";
+import { ToggleVisibleButton } from "./toggle-visible-button";
 
 export default async function DepartmentPage({
   params,
@@ -30,6 +32,12 @@ export default async function DepartmentPage({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-4">
+      <Link
+        href="/edit"
+        className="inline-flex w-fit items-center gap-1 text-sm text-black/70 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
+      >
+        ← 資料ホームに戻る
+      </Link>
       <h1 className="text-xl font-semibold text-black dark:text-zinc-50">
         {department.name}
       </h1>
@@ -62,19 +70,14 @@ export default async function DepartmentPage({
             </div>
             <div className="flex items-center gap-2">
               <form action={toggleVisible.bind(null, dept, doc.id, !doc.visible)}>
-                <button
-                  type="submit"
-                  className="rounded-full border border-black/[.15] px-3 py-1 text-xs text-black dark:border-white/[.2] dark:text-zinc-50"
-                >
-                  {doc.visible ? "表示中" : "非表示中"}
-                </button>
+                <ToggleVisibleButton visible={doc.visible} />
               </form>
               <form
                 action={deleteDocument.bind(null, dept, doc.id, doc.storage_path)}
               >
                 <button
                   type="submit"
-                  className="rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 dark:border-red-900"
+                  className="cursor-pointer rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 dark:border-red-900"
                 >
                   削除
                 </button>
