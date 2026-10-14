@@ -91,3 +91,15 @@
 - `boards.editor_invite_code` 列を削除。
 - `join_board_as_editor(code)` RPC を引数無しの `join_board_as_editor()` に置き換え。唯一のボードを探して呼び出しユーザーを editor として `board_members` に upsert するだけ（招待コードの照合が無くなった）。
 - `getEditorBoard()` がこの RPC を直接呼ぶようになったため、`/edit` 側の「未参加なら招待コード入力フォームを出す」という分岐と `JoinAsEditorForm` コンポーネント・`joinBoardAsEditor` サーバーアクションを削除。
+
+## 表示予約（2026-10-14）
+
+資料ごとに表示開始日・終了日（どちらも任意、日付単位、終了日当日まで表示）を設定できるようにした（`supabase/migrations/0004_display_schedule.sql`）。
+
+- `documents.display_start` / `display_end`（`date`、NULL は無期限）を追加。開始日 ≤ 終了日の CHECK 制約付き。
+- viewer 向け RLS「viewer can view visible documents」を作り直し、`visible = true` に加えて日本時間の今日が期間内であることを条件にした。表示アプリ（別リポジトリ）はコード変更なしで期間外の資料が見えなくなる。
+- 手動の表示/非表示（`visible`）はそのまま残し、期間と AND で効く（非表示にすれば期間内でも出ない）。
+- `src/lib/schedule.ts`: 日本時間の今日（`todayInTokyo()`）と、一覧に出す状態（掲載中 / 予約中 / 掲載終了 / 非表示）を判定する `getDisplayStatus()`。
+- `src/app/edit/[dept]/actions.ts`: `parseSchedule()` で日付形式と前後関係を検証。`addDocument` が期間も保存するようになり、既存資料の期間変更用に `updateSchedule(deptSlug, documentId, prevState, formData)` を追加。
+- `src/app/edit/[dept]/schedule-form.tsx`: `<input type="date">`（ブラウザ標準のカレンダー）の開始日・終了日ペア `DateRangeInputs` と、各資料行の期間編集フォーム `ScheduleForm`。追加フォームでも `DateRangeInputs` を使い回す。
+- `/edit/[dept]` の一覧に状態バッジ（期間があれば「予約中 10/20〜10/31」のように併記）と期間編集フォームを追加。

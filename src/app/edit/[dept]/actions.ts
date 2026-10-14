@@ -5,6 +5,24 @@ import { createClient } from "@/lib/supabase/server";
 import { getEditorBoard, getDepartmentBySlug } from "@/lib/supabase/dal";
 
 export type AddDocumentState = { error?: string } | undefined;
+export type ScheduleState = { error?: string; saved?: boolean } | undefined;
+
+type Schedule = { display_start: string | null; display_end: string | null };
+
+// フォームの表示開始日・終了日（<input type="date"> の YYYY-MM-DD、空欄は無期限）を検証する。
+function parseSchedule(formData: FormData): Schedule | { error: string } {
+  const start = String(formData.get("display_start") ?? "").trim() || null;
+  const end = String(formData.get("display_end") ?? "").trim() || null;
+  const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+  if ((start && !isDate(start)) || (end && !isDate(end))) {
+    return { error: "日付の形式が正しくありません。" };
+  }
+  if (start && end && start > end) {
+    return { error: "表示終了日は開始日以降にしてください。" };
+  }
+  return { display_start: start, display_end: end };
+}
 
 export async function addDocument(
   deptSlug: string,
@@ -27,6 +45,9 @@ export async function addDocument(
     return { error: "PDFファイルのみアップロードできます。" };
   }
 
+  const schedule = parseSchedule(formData);
+  if ("error" in schedule) return schedule;
+
   const supabase = await createClient();
   const path = `${board.id}/${department.id}/${crypto.randomUUID()}.pdf`;
 
@@ -43,6 +64,7 @@ export async function addDocument(
     department_id: department.id,
     title,
     storage_path: path,
+    ...schedule,
   });
 
   if (insertError) {
@@ -61,6 +83,27 @@ export async function toggleVisible(
   const supabase = await createClient();
   await supabase.from("documents").update({ visible }).eq("id", documentId);
   revalidatePath(`/edit/${deptSlug}`);
+}
+
+export async function updateSchedule(
+  deptSlug: string,
+  documentId: string,
+  _prevState: ScheduleState,
+  formData: FormData
+): Promise<ScheduleState> {
+  const schedule = parseSchedule(formData);
+  if ("error" in schedule) return schedule;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("documents")
+    .update(schedule)
+    .eq("id", documentId);
+
+  if (error) return { error: "表示期間の保存に失敗しました。" };
+
+  revalidatePath(`/edit/${deptSlug}`);
+  return { saved: true };
 }
 
 export async function deleteDocument(

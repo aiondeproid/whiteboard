@@ -68,7 +68,7 @@ export async function getDocuments(
   const { data, error } = await supabase
     .from("documents")
     .select(
-      "id, board_id, department_id, title, storage_path, visible, created_at, updated_at"
+      "id, board_id, department_id, title, storage_path, visible, display_start, display_end, created_at, updated_at"
     )
     .eq("board_id", boardId)
     .eq("department_id", departmentId)

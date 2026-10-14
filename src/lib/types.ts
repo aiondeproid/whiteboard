@@ -18,6 +18,8 @@ export type Document = {
   title: string;
   storage_path: string;
   visible: boolean;
+  display_start: string | null;
+  display_end: string | null;
   created_at: string;
   updated_at: string;
 };
