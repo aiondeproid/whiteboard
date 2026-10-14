@@ -11,6 +11,8 @@ export type Board = {
   join_code: string;
 };
 
+export type DocumentCategory = "urgent" | "notice" | "routine";
+
 export type Document = {
   id: string;
   board_id: string;
@@ -20,6 +22,10 @@ export type Document = {
   visible: boolean;
   display_start: string | null;
   display_end: string | null;
+  pinned: boolean;
+  category: DocumentCategory | null;
+  serial_no: number;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };

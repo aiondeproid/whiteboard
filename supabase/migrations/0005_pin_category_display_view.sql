@@ -33,7 +33,7 @@ select
   d.updated_at,
   (now() at time zone 'Asia/Tokyo')::date
     - coalesce(d.display_start, (d.created_at at time zone 'Asia/Tokyo')::date)
-    < 3 as is_new
+    between 0 and 2 as is_new
 from documents d;
 
 grant select on display_documents to authenticated;

@@ -6,16 +6,24 @@ import {
   getDocuments,
   getDocumentPreviewUrl,
 } from "@/lib/supabase/dal";
-import { toggleVisible, deleteDocument } from "./actions";
+import {
+  toggleVisible,
+  togglePinned,
+  deleteDocument,
+  deleteEndedDocuments,
+} from "./actions";
 import { AddDocumentForm } from "./add-document-form";
 import { ToggleVisibleButton } from "./toggle-visible-button";
-import { ScheduleForm } from "./schedule-form";
+import { DocumentSettings } from "./document-settings";
+import { DeleteEndedButton } from "./delete-ended-button";
 import {
   formatShortDate,
   getDisplayStatus,
+  isNew,
   todayInTokyo,
   type DisplayStatus,
 } from "@/lib/schedule";
+import { CATEGORIES } from "@/lib/category";
 
 const STATUS_BADGE: Record<
   DisplayStatus,
@@ -60,6 +68,9 @@ export default async function DepartmentPage({
       previewUrl: await getDocumentPreviewUrl(doc.storage_path),
     }))
   );
+  const endedCount = documents.filter(
+    (doc) => doc.display_end && doc.display_end < today
+  ).length;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-4">
@@ -75,6 +86,15 @@ export default async function DepartmentPage({
 
       <AddDocumentForm deptSlug={dept} />
 
+      {endedCount > 0 && (
+        <form
+          action={deleteEndedDocuments.bind(null, dept)}
+          className="flex justify-end"
+        >
+          <DeleteEndedButton count={endedCount} />
+        </form>
+      )}
+
       <ul className="flex flex-col gap-2">
         {documentsWithPreview.length === 0 && (
           <li className="text-sm text-black/50 dark:text-zinc-500">
@@ -84,13 +104,30 @@ export default async function DepartmentPage({
         {documentsWithPreview.map((doc) => (
           <li
             key={doc.id}
-            className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white px-4 py-3 dark:border-white/[.145] dark:bg-zinc-900"
+            className={`flex flex-col gap-3 rounded-xl border bg-white px-4 py-3 dark:bg-zinc-900 ${
+              doc.pinned
+                ? "border-amber-300 dark:border-amber-700"
+                : "border-black/[.08] dark:border-white/[.145]"
+            }`}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-3">
+                <span className="font-mono text-xs text-black/50 dark:text-zinc-500">
+                  No.{doc.serial_no}
+                </span>
+                {doc.category && (
+                  <Badge className={CATEGORIES[doc.category].className}>
+                    {CATEGORIES[doc.category].label}
+                  </Badge>
+                )}
                 <span className="text-black dark:text-zinc-50">
                   {doc.title}
                 </span>
+                {isNew(doc, today) && (
+                  <Badge className="bg-pink-100 font-semibold text-pink-700 dark:bg-pink-950 dark:text-pink-300">
+                    NEW
+                  </Badge>
+                )}
                 <StatusBadge doc={doc} today={today} />
                 {doc.previewUrl && (
                   <a
@@ -103,20 +140,27 @@ export default async function DepartmentPage({
                   </a>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
+                <form
+                  action={togglePinned.bind(null, dept, doc.id, !doc.pinned)}
+                >
+                  <button
+                    type="submit"
+                    className={`cursor-pointer rounded-full border px-3 py-1 text-xs ${
+                      doc.pinned
+                        ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                        : "border-black/[.15] text-black dark:border-white/[.2] dark:text-zinc-50"
+                    }`}
+                  >
+                    {doc.pinned ? "ピン留め中" : "ピン留め"}
+                  </button>
+                </form>
                 <form
                   action={toggleVisible.bind(null, dept, doc.id, !doc.visible)}
                 >
                   <ToggleVisibleButton visible={doc.visible} />
                 </form>
-                <form
-                  action={deleteDocument.bind(
-                    null,
-                    dept,
-                    doc.id,
-                    doc.storage_path
-                  )}
-                >
+                <form action={deleteDocument.bind(null, dept, doc.id)}>
                   <button
                     type="submit"
                     className="cursor-pointer rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 dark:border-red-900"
@@ -126,11 +170,12 @@ export default async function DepartmentPage({
                 </form>
               </div>
             </div>
-            <ScheduleForm
+            <DocumentSettings
               deptSlug={dept}
               documentId={doc.id}
               displayStart={doc.display_start}
               displayEnd={doc.display_end}
+              category={doc.category}
             />
           </li>
         ))}
@@ -155,9 +200,23 @@ function StatusBadge({
       : null;
 
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>
+    <Badge className={badge.className}>
       {badge.label}
       {range && ` ${range}`}
+    </Badge>
+  );
+}
+
+function Badge({
+  className,
+  children,
+}: {
+  className: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs ${className}`}>
+      {children}
     </span>
   );
 }

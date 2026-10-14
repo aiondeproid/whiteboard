@@ -60,6 +60,28 @@ export async function getDocumentPreviewUrl(
   return data.signedUrl;
 }
 
+const DOCUMENT_COLUMNS =
+  "id, board_id, department_id, title, storage_path, visible, display_start, display_end, pinned, category, serial_no, deleted_at, created_at, updated_at";
+
+// 署名付きURLをまとめて発行する（履歴一覧用）。storage_path → URL の Map を返す。
+export async function getDocumentPreviewUrls(
+  storagePaths: string[],
+  expiresInSeconds = 300
+): Promise<Map<string, string>> {
+  if (storagePaths.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("documents")
+    .createSignedUrls(storagePaths, expiresInSeconds);
+
+  if (error || !data) return new Map();
+  return new Map(
+    data.flatMap((item) =>
+      item.path && item.signedUrl ? [[item.path, item.signedUrl] as const] : []
+    )
+  );
+}
+
 export async function getDocuments(
   boardId: string,
   departmentId: string
@@ -67,12 +89,25 @@ export async function getDocuments(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("documents")
-    .select(
-      "id, board_id, department_id, title, storage_path, visible, display_start, display_end, created_at, updated_at"
-    )
+    .select(DOCUMENT_COLUMNS)
     .eq("board_id", boardId)
     .eq("department_id", departmentId)
+    .is("deleted_at", null)
+    .order("pinned", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+// 掲示履歴: 削除済みを含むボード内の全資料を通し番号の新しい順で返す。
+export async function getDocumentHistory(boardId: string): Promise<Document[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("documents")
+    .select(DOCUMENT_COLUMNS)
+    .eq("board_id", boardId)
+    .order("serial_no", { ascending: false });
 
   if (error) throw error;
   return data ?? [];

@@ -101,5 +101,43 @@
 - 手動の表示/非表示（`visible`）はそのまま残し、期間と AND で効く（非表示にすれば期間内でも出ない）。
 - `src/lib/schedule.ts`: 日本時間の今日（`todayInTokyo()`）と、一覧に出す状態（掲載中 / 予約中 / 掲載終了 / 非表示）を判定する `getDisplayStatus()`。
 - `src/app/edit/[dept]/actions.ts`: `parseSchedule()` で日付形式と前後関係を検証。`addDocument` が期間も保存するようになり、既存資料の期間変更用に `updateSchedule(deptSlug, documentId, prevState, formData)` を追加。
-- `src/app/edit/[dept]/schedule-form.tsx`: `<input type="date">`（ブラウザ標準のカレンダー）の開始日・終了日ペア `DateRangeInputs` と、各資料行の期間編集フォーム `ScheduleForm`。追加フォームでも `DateRangeInputs` を使い回す。
-- `/edit/[dept]` の一覧に状態バッジ（期間があれば「予約中 10/20〜10/31」のように併記）と期間編集フォームを追加。
+- 期間の入力は `<input type="date">`（ブラウザ標準のカレンダー）。UI は下の「ピン留め・ラベル・差し替え・一括削除」節の `document-settings.tsx` にまとめた。
+- `/edit/[dept]` の一覧に状態バッジ（期間があれば「予約中 10/20〜10/31」のように併記）を追加。
+
+## ピン留め・重要度ラベル・NEW・PDF差し替え・掲載終了の一括削除（2026-10-14）
+
+`supabase/migrations/0005_pin_category_display_view.sql`
+
+- `documents.pinned`（boolean、既定 false）: ピン留め。編集画面の一覧は `pinned desc, created_at desc` で並べる（`getDocuments()`）。
+- `documents.category`（`urgent` / `notice` / `routine` / NULL）: 重要度ラベル「緊急 / 周知 / 定期」。表示名と色は `src/lib/category.ts` の `CATEGORIES`。
+- ビュー `display_documents`（`security_invoker = true` なので RLS は呼び出しユーザーの権限で効く）: `documents` の全列に `is_new` を足したもの。NEW は表示開始日（未設定なら登録日、どちらも日本時間）から3日間。**表示アプリ側は `documents` の代わりにこのビューを読み、`order by pinned desc, created_at desc` で並べ、`category` / `is_new` でバッジを出す改修が必要**（このリポジトリには表示アプリが無いので未対応）。
+- `src/lib/schedule.ts`: ビューと同じ NEW 判定の `isNew()` を追加（編集画面でも NEW を表示）。
+
+`src/app/edit/[dept]/actions.ts` に追加:
+
+- `togglePinned(deptSlug, documentId, pinned)`
+- `updateDocumentSettings(deptSlug, documentId, prevState, formData)`: 表示期間とラベルをまとめて保存（旧 `updateSchedule` を置き換え）。
+- `replaceDocumentFile(deptSlug, documentId, prevState, formData)`: タイトル・期間・ラベルはそのままに PDF だけ差し替え。新しいパスにアップロード → `storage_path` 更新 → 旧ファイル削除の順で、途中で失敗しても資料が壊れないようにしている。
+- `deleteEndedDocuments(deptSlug)`: 表示終了日が今日（日本時間）より前の資料を、その部の分だけ Storage・DB ともに一括削除。
+
+UI:
+
+- `src/app/edit/[dept]/document-settings.tsx`: 各資料行の折りたたみ「期間・ラベル・PDFを編集」パネル。`DateRangeInputs` / `CategorySelect` は追加フォームでも使い回す。
+- `src/app/edit/[dept]/delete-ended-button.tsx`: 掲載終了の資料があるときだけ出る一括削除ボタン（`confirm()` で確認）。
+- 一覧の各行: ラベル・NEW・状態バッジ、ピン留めボタン。ピン留め中の行は枠を色付け。
+
+## 通し番号と掲示履歴（2026-10-14）
+
+`supabase/migrations/0007_serial_no_and_history.sql`
+
+- `documents.serial_no`: ボード全体（部をまたいだ1本）の通し番号。`assign_document_serial_no` トリガーが登録時に `max + 1` で採番する（ボード単位の advisory lock で同時登録の重複を防止）。クライアントから指定・変更しても無視される。`(board_id, serial_no)` にユニーク制約。既存行は登録順に採番済み。
+- `documents.deleted_at`: 論理削除。「削除」「掲載終了の一括削除」は行も PDF ファイルも消さずに `deleted_at` を立てるだけになった。viewer 向け RLS と `display_documents` ビューは削除済みを除外する（表示アプリ側の変更不要）。ビューには `serial_no` 列も追加。
+- 0006 で `authenticated` への GRANT を明示（新しい Supabase は public テーブルを自動 GRANT しないため）。
+
+アプリ側:
+
+- `getDocuments()` は `deleted_at is null` のみ。新たに `getDocumentHistory(boardId)`（削除済み含む全件、通し番号の新しい順）と、署名付きURLをまとめて発行する `getDocumentPreviewUrls(paths)` を追加。
+- `src/lib/schedule.ts`: `getEffectivePeriod()` — 履歴に出す実際の表示期間。開始は表示開始日（未設定なら登録日）、終了は表示終了日と削除日の早いほう（どちらも無ければ「継続中」）。
+- `/edit/history`（`src/app/edit/history/`）: 掲示履歴。No.・ラベル・タイトル（PDF を開くリンク）・部・表示期間・状態（削除済み含む）を表で表示。`?dept=slug` で部の絞り込み。削除済みは `restoreDocument` で「一覧に戻す」ことができる。
+- 部の資料一覧に `No.` を表示。資料ホームに「掲示履歴を見る」リンク。
+- PDF 差し替え時の旧ファイルは従来どおり削除する（版の履歴は持たない）。

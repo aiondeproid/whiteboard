@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { requireUser, getEditorBoard, getDepartments } from "@/lib/supabase/dal";
+import {
+  requireUser,
+  getEditorBoard,
+  getDepartments,
+} from "@/lib/supabase/dal";
 
 export default async function EditHome() {
   await requireUser();
@@ -22,6 +26,12 @@ export default async function EditHome() {
           </Link>
         ))}
       </div>
+      <Link
+        href="/edit/history"
+        className="text-sm text-black/70 underline underline-offset-4 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
+      >
+        掲示履歴を見る
+      </Link>
     </div>
   );
 }

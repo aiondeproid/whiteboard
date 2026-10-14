@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { addDocument, type AddDocumentState } from "./actions";
-import { DateRangeInputs } from "./schedule-form";
+import { CategorySelect, DateRangeInputs } from "./document-settings";
 
 const initialState: AddDocumentState = undefined;
 
@@ -52,6 +52,12 @@ export function AddDocumentForm({ deptSlug }: { deptSlug: string }) {
           <DateRangeInputs idPrefix="new" />
         </div>
       </fieldset>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-black dark:text-zinc-50">重要度</span>
+        <div className="flex">
+          <CategorySelect idPrefix="new" />
+        </div>
+      </div>
       {state?.error && (
         <p className="text-sm text-red-600" role="alert">
           {state.error}
