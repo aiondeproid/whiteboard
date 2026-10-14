@@ -64,3 +64,34 @@ export function getEffectivePeriod(
   const end = ends.length > 0 ? ends.sort()[0] : null;
   return { start, end };
 }
+
+const STATUS_LABEL: Record<DisplayStatus, string> = {
+  showing: "掲載中",
+  scheduled: "予約中",
+  ended: "掲載終了",
+  hidden: "非表示",
+};
+
+// 掲示履歴に出す状態（削除済みを含む）。
+export function getHistoryStatusLabel(
+  doc: Pick<
+    Document,
+    "visible" | "display_start" | "display_end" | "deleted_at"
+  >,
+  today = todayInTokyo()
+): string {
+  if (doc.deleted_at) return "削除済み";
+  return STATUS_LABEL[getDisplayStatus(doc, today)];
+}
+
+// ISO 日時 → 日本時間の "2026/10/14 18:07"
+export function formatDateTimeInTokyo(iso: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}

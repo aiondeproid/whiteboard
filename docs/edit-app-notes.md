@@ -141,3 +141,10 @@ UI:
 - `/edit/history`（`src/app/edit/history/`）: 掲示履歴。No.・ラベル・タイトル（PDF を開くリンク）・部・表示期間・状態（削除済み含む）を表で表示。`?dept=slug` で部の絞り込み。削除済みは `restoreDocument` で「一覧に戻す」ことができる。
 - 部の資料一覧に `No.` を表示。資料ホームに「掲示履歴を見る」リンク。
 - PDF 差し替え時の旧ファイルは従来どおり削除する（版の履歴は持たない）。
+
+## 掲示履歴の CSV 出力（2026-10-14）
+
+- `src/app/edit/history/export/route.ts`: `GET /edit/history/export`（`?dept=slug` で部の絞り込み、履歴ページと同じ）。列は No.・タイトル・部・ラベル・表示開始日・表示終了日（`getEffectivePeriod()` の実際の期間）・状態・ピン留め・登録日時・削除日時（日本時間）。
+- Excel でダブルクリックして開いても文字化けしないよう UTF-8 BOM + CRLF。全フィールドをダブルクォートで囲み、`=` `+` `-` `@` で始まる値には `'` を前置して数式として実行されないようにしている（CSV インジェクション対策）。
+- ファイル名は `掲示履歴[_部名]_YYYYMMDD.csv`（`filename*` で UTF-8 指定、古いブラウザ向けに `history.csv` をフォールバック）。
+- 履歴ページ右上に「CSVでダウンロード」ボタン（絞り込み中はその部だけ）。状態の表示名は `getHistoryStatusLabel()` として `src/lib/schedule.ts` に移し、ページと CSV で共通化。

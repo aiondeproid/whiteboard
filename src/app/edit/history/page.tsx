@@ -7,19 +7,12 @@ import {
 } from "@/lib/supabase/dal";
 import {
   formatDate,
-  getDisplayStatus,
   getEffectivePeriod,
+  getHistoryStatusLabel,
   todayInTokyo,
 } from "@/lib/schedule";
 import { CATEGORIES } from "@/lib/category";
 import { restoreDocument } from "./actions";
-
-const STATUS_LABEL = {
-  showing: "掲載中",
-  scheduled: "予約中",
-  ended: "掲載終了",
-  hidden: "非表示",
-} as const;
 
 export default async function HistoryPage({
   searchParams,
@@ -56,9 +49,18 @@ export default async function HistoryPage({
       >
         ← 資料ホームに戻る
       </Link>
-      <h1 className="text-xl font-semibold text-black dark:text-zinc-50">
-        掲示履歴
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-black dark:text-zinc-50">
+          掲示履歴
+        </h1>
+        {/* ファイルのダウンロードなので Link ではなく素の a（プリフェッチさせない） */}
+        <a
+          href={`/edit/history/export${selected ? `?dept=${selected.slug}` : ""}`}
+          className="rounded-full bg-foreground px-4 py-2 text-xs text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+        >
+          CSVでダウンロード{selected && `（${selected.name}）`}
+        </a>
+      </div>
 
       <nav className="flex flex-wrap gap-2">
         <Link href="/edit/history" className={filterClass(!selected)}>
@@ -135,9 +137,7 @@ export default async function HistoryPage({
                       {period.end ? formatDate(period.end) : "継続中"}
                     </td>
                     <td className="px-3 py-2 text-xs whitespace-nowrap">
-                      {doc.deleted_at
-                        ? "削除済み"
-                        : STATUS_LABEL[getDisplayStatus(doc, today)]}
+                      {getHistoryStatusLabel(doc, today)}
                     </td>
                     <td className="px-3 py-2 text-right">
                       {doc.deleted_at && (
